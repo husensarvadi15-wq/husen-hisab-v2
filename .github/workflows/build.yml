@@ -24,8 +24,20 @@ jobs:
           mkdir -p app/src/main/res/values
 
           cat << 'EOF' > settings.gradle.kts
-          pluginManagement { repositories { google(); mavenCentral() } }
-          dependencyResolutionManagement { repositories { google(); mavenCentral() } }
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
           rootProject.name = "HusenHisab"
           include(":app")
           EOF
@@ -56,9 +68,15 @@ jobs:
                   sourceCompatibility = JavaVersion.VERSION_17
                   targetCompatibility = JavaVersion.VERSION_17
               }
-              kotlinOptions { jvmTarget = "17" }
-              buildFeatures { compose = true }
-              composeOptions { kotlinCompilerExtensionVersion = "1.5.4" }
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+              buildFeatures {
+                  compose = true
+              }
+              composeOptions {
+                  kotlinCompilerExtensionVersion = "1.5.4"
+              }
           }
           dependencies {
               implementation("androidx.core:core-ktx:1.12.0")
@@ -66,7 +84,7 @@ jobs:
               implementation(platform("androidx.compose:compose-bom:2023.10.01"))
               implementation("androidx.compose.ui:ui")
               implementation("androidx.compose.ui:ui-graphics")
-              implementation("androidx.compose.material:material:1.5.4")
+              implementation("androidx.compose.material3:material3")
           }
           EOF
 
@@ -89,7 +107,9 @@ jobs:
           EOF
 
           cat << 'EOF' > app/src/main/res/values/strings.xml
-          <resources><string name="app_name">હુસેન હિસાબ</string></resources>
+          <resources>
+              <string name="app_name">હુસેન હિસાબ</string>
+          </resources>
           EOF
 
           cat << 'EOF' > app/src/main/java/com/sarvadiverse/husenhisab/MainActivity.kt
@@ -98,16 +118,36 @@ jobs:
           import android.os.Bundle
           import androidx.activity.ComponentActivity
           import androidx.activity.compose.setContent
-          import androidx.compose.foundation.background
-          import androidx.compose.foundation.layout.*
+          import androidx.compose.foundation.layout.Arrangement
+          import androidx.compose.foundation.layout.Column
+          import androidx.compose.foundation.layout.Row
+          import androidx.compose.foundation.layout.Spacer
+          import androidx.compose.foundation.layout.fillMaxSize
+          import androidx.compose.foundation.layout.fillMaxWidth
+          import androidx.compose.foundation.layout.height
+          import androidx.compose.foundation.layout.padding
           import androidx.compose.foundation.lazy.LazyColumn
           import androidx.compose.foundation.lazy.items
-          import androidx.compose.material.*
-          import androidx.compose.runtime.*
+          import androidx.compose.material3.Button
+          import androidx.compose.material3.Card
+          import androidx.compose.material3.Divider
+          import androidx.compose.material3.ExperimentalMaterial3Api
+          import androidx.compose.material3.MaterialTheme
+          import androidx.compose.material3.NavigationBar
+          import androidx.compose.material3.NavigationBarItem
+          import androidx.compose.material3.OutlinedTextField
+          import androidx.compose.material3.Scaffold
+          import androidx.compose.material3.Surface
+          import androidx.compose.material3.Text
+          import androidx.compose.material3.TopAppBar
+          import androidx.compose.runtime.Composable
+          import androidx.compose.runtime.getValue
+          import androidx.compose.runtime.mutableStateListOf
+          import androidx.compose.runtime.mutableStateOf
+          import androidx.compose.runtime.remember
+          import androidx.compose.runtime.setValue
           import androidx.compose.ui.Modifier
-          import androidx.compose.ui.graphics.Color
           import androidx.compose.ui.unit.dp
-          import androidx.compose.ui.unit.sp
 
           data class Work(val line: String, val small: Int, val large: Int, val total: Double)
           data class Pay(val name: String, val amount: Double)
@@ -125,6 +165,7 @@ jobs:
               }
           }
 
+          @OptIn(ExperimentalMaterial3Api::class)
           @Composable
           fun HisabApp() {
               var tab by remember { mutableStateOf(0) }
@@ -143,127 +184,73 @@ jobs:
               val net = totalEarn - totalPaid
 
               Scaffold(
-                  topBar = {
-                      TopAppBar(
-                          title = { Text("હુસેન હિસાબ (OTP વગર)", color = Color.White) },
-                          backgroundColor = Color(0xFF1E88E5)
-                      )
-                  },
+                  topBar = { TopAppBar(title = { Text("હુસેન હિસાબ") }) },
                   bottomBar = {
-                      BottomNavigation(backgroundColor = Color.White) {
-                          BottomNavigationItem(
-                              selected = tab == 0,
-                              onClick = { tab = 0 },
-                              label = { Text("ડેશબોર્ડ") },
-                              icon = {}
-                          )
-                          BottomNavigationItem(
-                              selected = tab == 1,
-                              onClick = { tab = 1 },
-                              label = { Text("કામ") },
-                              icon = {}
-                          )
-                          BottomNavigationItem(
-                              selected = tab == 2,
-                              onClick = { tab = 2 },
-                              label = { Text("ચૂકવણી") },
-                              icon = {}
-                          )
+                      NavigationBar {
+                          NavigationBarItem(selected = tab == 0, onClick = { tab = 0 }, label = { Text("ડેશબોર્ડ") }, icon = {})
+                          NavigationBarItem(selected = tab == 1, onClick = { tab = 1 }, label = { Text("કામ") }, icon = {})
+                          NavigationBarItem(selected = tab == 2, onClick = { tab = 2 }, label = { Text("ચૂકવણી") }, icon = {})
                       }
                   }
               ) { p ->
                   Column(modifier = Modifier.padding(p).padding(16.dp)) {
                       if (tab == 0) {
-                          Card(elevation = 4.dp, modifier = Modifier.fillMaxWidth()) {
+                          Card(modifier = Modifier.fillMaxWidth()) {
                               Column(modifier = Modifier.padding(16.dp)) {
-                                  Text("કુલ આવક: ₹$totalEarn", fontSize = 18.sp)
-                                  Spacer(modifier = Modifier.height(8.dp))
-                                  Text("કુલ ચૂકવણી: ₹$totalPaid", fontSize = 18.sp)
-                                  Divider(modifier = Modifier.padding(vertical = 12.dp))
-                                  Text("ચોખ્ખી બચત: ₹$net", fontSize = 22.sp, color = Color(0xFF2E7D32))
+                                  Text("કુલ આવક: ₹$totalEarn", style = MaterialTheme.typography.titleMedium)
+                                  Spacer(modifier = Modifier.height(4.dp))
+                                  Text("કુલ ચૂકવણી: ₹$totalPaid", style = MaterialTheme.typography.titleMedium)
+                                  Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                  Text("ચોખ્ખો નફો: ₹$net", style = MaterialTheme.typography.headlineSmall)
                               }
                           }
                       } else if (tab == 1) {
-                          OutlinedTextField(
-                              value = line,
-                              onValueChange = { line = it },
-                              label = { Text("લાઇનનું નામ") },
-                              modifier = Modifier.fillMaxWidth()
-                          )
+                          OutlinedTextField(value = line, onValueChange = { line = it }, label = { Text("લાઇનનું નામ") }, modifier = Modifier.fillMaxWidth())
+                          Spacer(modifier = Modifier.height(6.dp))
+                          OutlinedTextField(value = small, onValueChange = { small = it }, label = { Text("નાના પોલ (₹100)") }, modifier = Modifier.fillMaxWidth())
+                          Spacer(modifier = Modifier.height(6.dp))
+                          OutlinedTextField(value = large, onValueChange = { large = it }, label = { Text("મોટા પોલ (₹200)") }, modifier = Modifier.fillMaxWidth())
                           Spacer(modifier = Modifier.height(8.dp))
-                          OutlinedTextField(
-                              value = small,
-                              onValueChange = { small = it },
-                              label = { Text("નાના પોલ (₹100)") },
-                              modifier = Modifier.fillMaxWidth()
-                          )
-                          Spacer(modifier = Modifier.height(8.dp))
-                          OutlinedTextField(
-                              value = large,
-                              onValueChange = { large = it },
-                              label = { Text("મોટા પોલ (₹200)") },
-                              modifier = Modifier.fillMaxWidth()
-                          )
-                          Spacer(modifier = Modifier.height(12.dp))
-                          Button(
-                              onClick = {
-                                  val s = small.toIntOrNull() ?: 0
-                                  val l = large.toIntOrNull() ?: 0
-                                  if (line.isNotEmpty()) {
-                                      works.add(Work(line, s, l, (s * 100.0) + (l * 200.0)))
-                                      line = ""; small = ""; large = ""
-                                  }
-                              },
-                              modifier = Modifier.fillMaxWidth()
-                          ) {
+                          Button(onClick = {
+                              val s = small.toIntOrNull() ?: 0
+                              val l = large.toIntOrNull() ?: 0
+                              if (line.isNotEmpty()) {
+                                  works.add(Work(line, s, l, (s * 100.0) + (l * 200.0)))
+                                  line = ""; small = ""; large = ""
+                              }
+                          }, modifier = Modifier.fillMaxWidth()) {
                               Text("કામ સેવ કરો")
                           }
-                          LazyColumn(modifier = Modifier.padding(top = 12.dp)) {
+                          LazyColumn(modifier = Modifier.padding(top = 8.dp)) {
                               items(works) { w ->
-                                  Card(elevation = 2.dp, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                  Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                                       Column(modifier = Modifier.padding(8.dp)) {
-                                          Text("લાઇન: ${w.line}")
-                                          Text("નાના: ${w.small} | મોટા: ${w.large} | કુલ: ₹${w.total}")
+                                          Text("${w.line} -> નાના: ${w.small}, મોટા: ${w.large}")
+                                          Text("કુલ: ₹${w.total}", style = MaterialTheme.typography.bodyMedium)
                                       }
                                   }
                               }
                           }
                       } else {
-                          OutlinedTextField(
-                              value = pName,
-                              onValueChange = { pName = it },
-                              label = { Text("સાથીદારનું નામ") },
-                              modifier = Modifier.fillMaxWidth()
-                          )
+                          OutlinedTextField(value = pName, onValueChange = { pName = it }, label = { Text("સાથીદારનું નામ") }, modifier = Modifier.fillMaxWidth())
+                          Spacer(modifier = Modifier.height(6.dp))
+                          OutlinedTextField(value = pAmt, onValueChange = { pAmt = it }, label = { Text("ચૂકવેલ રકમ (₹)") }, modifier = Modifier.fillMaxWidth())
                           Spacer(modifier = Modifier.height(8.dp))
-                          OutlinedTextField(
-                              value = pAmt,
-                              onValueChange = { pAmt = it },
-                              label = { Text("ચૂકવેલ રકમ (₹)") },
-                              modifier = Modifier.fillMaxWidth()
-                          )
-                          Spacer(modifier = Modifier.height(12.dp))
-                          Button(
-                              onClick = {
-                                  val a = pAmt.toDoubleOrNull() ?: 0.0
-                                  if (pName.isNotEmpty()) {
-                                      pays.add(Pay(pName, a))
-                                      pName = ""; pAmt = ""
-                                  }
-                              },
-                              modifier = Modifier.fillMaxWidth()
-                          ) {
+                          Button(onClick = {
+                              val a = pAmt.toDoubleOrNull() ?: 0.0
+                              if (pName.isNotEmpty()) {
+                                  pays.add(Pay(pName, a))
+                                  pName = ""; pAmt = ""
+                              }
+                          }, modifier = Modifier.fillMaxWidth()) {
                               Text("ચૂકવણી સેવ કરો")
                           }
-                          LazyColumn(modifier = Modifier.padding(top = 12.dp)) {
+                          LazyColumn(modifier = Modifier.padding(top = 8.dp)) {
                               items(pays) { py ->
-                                  Card(elevation = 2.dp, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                                      Row(
-                                          modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                          horizontalArrangement = Arrangement.SpaceBetween
-                                      ) {
+                                  Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                      Row(modifier = Modifier.fillMaxWidth().padding(10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                                           Text(py.name)
-                                          Text("₹${py.amount}", color = Color.Red)
+                                          Text("₹${py.amount}")
                                       }
                                   }
                               }
@@ -275,11 +262,11 @@ jobs:
           EOF
 
       - name: Build APK
-        run: gradle :app:assembleDebug --no-build-cache
+        run: gradle :app:assembleDebug --stacktrace --no-build-cache
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: HusenHisab-Offline-APK
+          name: HusenHisab-NoOTP-Final
           path: "app/build/outputs/apk/debug/*.apk"
           
