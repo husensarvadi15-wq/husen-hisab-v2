@@ -14,17 +14,21 @@ jobs:
 
       - name: Extract Zip Project
         run: |
-          # Zip ફાઈલ શોધીને આપોઆપ extract કરશે
-          ZIP_FILE=$(ls *.zip 2>/dev/null | head -n 1)
+          # ઉપલબ્ધ Zip ફાઇલ શોધીને બહાર કાઢો
+          ZIP_FILE=$(find . -maxdepth 2 -name "*.zip" | head -n 1)
           if [ -n "$ZIP_FILE" ]; then
             echo "Extracting $ZIP_FILE..."
             unzip -o "$ZIP_FILE"
-            # જો zip ની અંદર બીજા ફોલ્ડરમાં ફાઈલો હોય તો બહાર લાવી દેશે
-            if [ -d "husen-hisab" ] && [ ! -d "app" ]; then
-              cp -r husen-hisab/* .
+          fi
+
+          # જો અનઝિપ કર્યા પછી અંદર બીજું કોઈ સબ-ફોલ્ડર બન્યું હોય તો ફાઇલો બહાર લાવો
+          if [ ! -d "app" ]; then
+            SUBDIR=$(find . -maxdepth 2 -type d -name "app" | head -n 1 | sed 's|/app||')
+            if [ -n "$SUBDIR" ] && [ "$SUBDIR" != "." ]; then
+              echo "Moving files from $SUBDIR to root..."
+              cp -r "$SUBDIR"/* .
             fi
           fi
-          chmod +x gradlew || true
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -34,13 +38,16 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.2'
+          cache-disabled: true
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: gradle assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: HusenHisab-APK
-          path: "app/build/outputs/apk/debug/*.apk"
+          path: "**/build/outputs/apk/debug/*.apk"
           
