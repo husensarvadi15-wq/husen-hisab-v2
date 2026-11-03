@@ -1,13 +1,201 @@
-name: Get APK
+name: Build Clean No-OTP APK
+
 on: [push, workflow_dispatch]
+
 jobs:
-  get-apk:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: unzip -o "*.zip"
-      - uses: actions/upload-artifact@v4
+      - name: Setup JDK
+        uses: actions/setup-java@v4
         with:
-          name: HusenHisab-Direct-APK
-          path: "*.apk"
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.2'
+
+      - name: Generate No-OTP App
+        run: |
+          mkdir -p app/src/main/java/com/sarvadiverse/husenhisab
+          mkdir -p app/src/main/res/values
+
+          cat << 'EOF' > settings.gradle.kts
+          pluginManagement { repositories { google(); mavenCentral() } }
+          dependencyResolutionManagement { repositories { google(); mavenCentral() } }
+          rootProject.name = "HusenHisab"
+          include(":app")
+          EOF
+
+          cat << 'EOF' > build.gradle.kts
+          plugins {
+              id("com.android.application") version "8.2.0" apply false
+              id("org.jetbrains.kotlin.android") version "1.9.20" apply false
+          }
+          EOF
+
+          cat << 'EOF' > app/build.gradle.kts
+          plugins {
+              id("com.android.application")
+              id("org.jetbrains.kotlin.android")
+          }
+          android {
+              namespace = "com.sarvadiverse.husenhisab"
+              compileSdk = 34
+              defaultConfig {
+                  applicationId = "com.sarvadiverse.husenhisab"
+                  minSdk = 24
+                  targetSdk = 34
+                  versionCode = 1
+                  versionName = "1.0"
+              }
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions { jvmTarget = "17" }
+              buildFeatures { compose = true }
+              composeOptions { kotlinCompilerExtensionVersion = "1.5.4" }
+          }
+          dependencies {
+              implementation("androidx.core:core-ktx:1.12.0")
+              implementation("androidx.activity:activity-compose:1.8.2")
+              implementation(platform("androidx.compose:compose-bom:2023.10.01"))
+              implementation("androidx.compose.ui:ui")
+              implementation("androidx.compose.material3:material3")
+          }
+          EOF
+
+          cat << 'EOF' > app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:allowBackup="true"
+                  android:icon="@android:drawable/sym_def_app_icon"
+                  android:label="હુસેન હિસાબ"
+                  android:theme="@android:style/Theme.Material.Light.NoActionBar">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat << 'EOF' > app/src/main/res/values/strings.xml
+          <resources><string name="app_name">હુસેન હિસાબ</string></resources>
+          EOF
+
+          cat << 'EOF' > app/src/main/java/com/sarvadiverse/husenhisab/MainActivity.kt
+          package com.sarvadiverse.husenhisab
+
+          import android.os.Bundle
+          import androidx.activity.ComponentActivity
+          import androidx.activity.compose.setContent
+          import androidx.compose.foundation.layout.*
+          import androidx.compose.foundation.lazy.LazyColumn
+          import androidx.compose.foundation.lazy.items
+          import androidx.compose.material3.*
+          import androidx.compose.runtime.*
+          import androidx.compose.ui.Modifier
+          import androidx.compose.ui.unit.dp
+
+          data class Work(val line: String, val small: Int, val large: Int, val total: Double)
+          data class Pay(val name: String, val amount: Double)
+
+          class MainActivity : ComponentActivity() {
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  setContent {
+                      MaterialTheme {
+                          Surface(modifier = Modifier.fillMaxSize()) {
+                              HisabApp()
+                          }
+                      }
+                  }
+              }
+          }
+
+          @OptIn(ExperimentalMaterial3Api::class)
+          @Composable
+          fun HisabApp() {
+              var tab by remember { mutableStateOf(0) }
+              val works = remember { mutableStateListOf<Work>() }
+              val pays = remember { mutableStateListOf<Pay>() }
+
+              var line by remember { mutableStateOf("") }
+              var small by remember { mutableStateOf("") }
+              var large by remember { mutableStateOf("") }
+
+              var pName by remember { mutableStateOf("") }
+              var pAmt by remember { mutableStateOf("") }
+
+              val totalEarn = works.sumOf { it.total }
+              val totalPaid = pays.sumOf { it.amount }
+              val net = totalEarn - totalPaid
+
+              Scaffold(
+                  topBar = { TopAppBar(title = { Text("હુસેન હિસાબ (OTP વગર)") }) },
+                  bottomBar = {
+                      NavigationBar {
+                          NavigationBarItem(selected = tab == 0, onClick = { tab = 0 }, label = { Text("ડેશબોર્ડ") }, icon = {})
+                          NavigationBarItem(selected = tab == 1, onClick = { tab = 1 }, label = { Text("કામ ઉમેરો") }, icon = {})
+                          NavigationBarItem(selected = tab == 2, onClick = { tab = 2 }, label = { Text("ચૂકવણી") }, icon = {})
+                      }
+                  }
+              ) { p ->
+                  Column(modifier = Modifier.padding(p).padding(16.dp)) {
+                      if (tab == 0) {
+                          Card(modifier = Modifier.fillMaxWidth()) {
+                              Column(modifier = Modifier.padding(16.dp)) {
+                                  Text("કુલ આવક: ₹$totalEarn", style = MaterialTheme.typography.titleMedium)
+                                  Text("કુલ ચૂકવણી: ₹$totalPaid", style = MaterialTheme.typography.titleMedium)
+                                  Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                  Text("ચોખ્ખી બચત: ₹$net", style = MaterialTheme.typography.headlineSmall)
+                              }
+                          }
+                      } else if (tab == 1) {
+                          OutlinedTextField(value = line, onValueChange = { line = it }, label = { Text("લાઇનનું નામ") }, modifier = Modifier.fillMaxWidth())
+                          OutlinedTextField(value = small, onValueChange = { small = it }, label = { Text("નાના પોલ (₹100)") }, modifier = Modifier.fillMaxWidth())
+                          OutlinedTextField(value = large, onValueChange = { large = it }, label = { Text("મોટા પોલ (₹200)") }, modifier = Modifier.fillMaxWidth())
+                          Spacer(modifier = Modifier.height(8.dp))
+                          Button(onClick = {
+                              val s = small.toIntOrNull() ?: 0
+                              val l = large.toIntOrNull() ?: 0
+                              works.add(Work(line, s, l, (s * 100.0) + (l * 200.0)))
+                              line = ""; small = ""; large = ""
+                          }, modifier = Modifier.fillMaxWidth()) { Text("સેવ કરો") }
+                          LazyColumn(modifier = Modifier.padding(top = 8.dp)) {
+                              items(works) { w -> Text("${w.line}: નાના ${w.small}, મોટા ${w.large} = ₹${w.total}") }
+                          }
+                      } else {
+                          OutlinedTextField(value = pName, onValueChange = { pName = it }, label = { Text("સાથીદારનું નામ") }, modifier = Modifier.fillMaxWidth())
+                          OutlinedTextField(value = pAmt, onValueChange = { pAmt = it }, label = { Text("ચૂકવેલ રકમ (₹)") }, modifier = Modifier.fillMaxWidth())
+                          Spacer(modifier = Modifier.height(8.dp))
+                          Button(onClick = {
+                              val a = pAmt.toDoubleOrNull() ?: 0.0
+                              pays.add(Pay(pName, a))
+                              pName = ""; pAmt = ""
+                          }, modifier = Modifier.fillMaxWidth()) { Text("ચૂકવણી સેવ કરો") }
+                          LazyColumn(modifier = Modifier.padding(top = 8.dp)) {
+                              items(pays) { py -> Text("${py.name}: ₹${py.amount}") }
+                          }
+                      }
+                  }
+              }
+          }
+          EOF
+
+      - name: Build APK
+        run: gradle :app:assembleDebug --no-build-cache
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: HusenHisab-NoOTP-Final
+          path: "app/build/outputs/apk/debug/*.apk"
           
